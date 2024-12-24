@@ -1,0 +1,20 @@
+---
+postgres_repo_key: "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
+postgres_repo: "deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main"
+postgres_repo_filename: pgdg
+postgres_version: 15
+postgres_data_dir: "/var/lib/postgresql/{{ postgres_version }}"
+postgres_custom_data_dir: "/tmp/postgresql"
+postgres_config_dir: "/etc/postgresql/{{ postgres_version }}/main"
+postgres_db_name: lab5-db
+postgres_db_port: 5432
+postgres_db_role: lab5-role
+postgres_db_privs: ALL
+postgres_user_name: lab5-user-name
+postgres_user_password: lab5-user-password
+postgres_hba_method: md5
+postgres_replica_hba_method: md5
+postgres_master_address: 89.169.132.157
+postgres_replica_address: 84.201.135.122
+postgres_default_user_password: qwerty
+postgres_role: unknown

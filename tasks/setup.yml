@@ -1,0 +1,75 @@
+---
+- name: "Импортируем gpg ключ PostgreSQL"
+  apt_key:
+    url: "{{ postgres_repo_key }}"
+    state: present
+
+- name: "Создаем файл конфигурации репозитория"
+  apt_repository:
+    repo: "{{ postgres_repo }}"
+    state: present
+    filename: "{{ postgres_repo_filename }}"
+
+- name: "Устанавливаем пакеты PostgreSQL и дополнительные зависимости"
+  apt:
+    name:
+      - "postgresql-{{ postgres_version }}"
+      - "postgresql-contrib-{{ postgres_version }}"
+      - "gnupg"
+      - "python3-psycopg2"
+    state: present
+    update_cache: yes
+
+- name: "Проверяем, существует ли директория PostgreSQL"
+  file:
+    path: "{{ postgres_data_dir }}/main"
+    owner: postgres
+    group: postgres
+    state: directory
+    mode: 0700
+
+- name: "Инициализируем PostgreSQL, если он не инициализирован"
+  become_user: postgres
+  command: "{{ postgres_data_dir }}/bin/initdb -D {{ postgres_data_dir }}/main"
+  when: not (lookup('file', '{{ postgres_data_dir }}/main/PG_VERSION', errors='ignore') is defined)
+
+- name: "Запускаем PostgreSQL"
+  service:
+    name: postgresql.service
+    state: started
+    enabled: true
+
+- name: "Настраиваем pg_hba.conf"
+  template:
+    src: "pg_hba.conf.j2"
+    dest: "{{ postgres_data_dir }}/main/pg_hba.conf"
+    owner: postgres
+    group: postgres
+    mode: 0600
+  notify: "Restart postgres"
+
+- name: "Останавливаем PostgreSQL"
+  service:
+    name: postgresql.service
+    state: stopped
+
+- name: "Синхронизируем директории с данными"
+  synchronize:
+    src: "{{ postgres_data_dir }}"
+    dest: "{{ postgres_custom_data_dir }}"
+  delegate_to: "{{ inventory_hostname }}"
+
+- name: "Настраиваем postgresql.conf"
+  lineinfile:
+    path: "{{ postgres_config_dir }}/postgresql.conf"
+    regexp: '^data_directory'
+    line: "data_directory = '{{ postgres_custom_data_dir }}/{{ postgres_version }}/main'"
+
+- name: "Меняем переменную директории с данными на кастомную"
+  set_fact:
+    pgsql_data_dir: "{{ postgres_custom_data_dir }}/{{ postgres_version }}"
+
+- name: "Запускаем PostgreSQL"
+  service:
+    name: postgresql.service
+    state: started

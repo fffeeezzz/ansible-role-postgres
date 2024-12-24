@@ -1,0 +1,25 @@
+---
+- name: "Останавливаем PostgreSQL"
+  service:
+    name: postgresql.service
+    state: stopped
+
+- name: "Удаляем main из директории с данными"
+  become_user: postgres
+  file:
+    path: "{{ postgres_data_dir }}/main"
+    state: absent
+
+- name: "Пересоздаем main в директории с данными с новыми правами"
+  become_user: postgres
+  file:
+    path: "{{ postgres_data_dir }}/main"
+    state: directory
+    mode: go-rwx
+
+- name: "Делаем бекап"
+  become_user: postgres
+  command: "pg_basebackup -P -R -X stream -c fast -h {{ postgres_master_address }} -U postgres -D {{ postgres_data_dir }}/main"
+  environment:
+    PGPASSWORD: "{{ postgres_default_user_password }}"
+  notify: "Restart postgres"

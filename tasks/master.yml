@@ -1,0 +1,59 @@
+---
+- name: "Создаем базу данных"
+  become: true
+  become_user: postgres
+  community.postgresql.postgresql_db:
+    name: "{{ postgres_db_name }}"
+    port: "{{ postgres_db_port }}"
+
+- name: "Создаем пользователя"
+  become_user: postgres
+  postgresql_user:
+    name: "{{ postgres_user_name }}"
+    password: "{{ postgres_user_password }}"
+
+- name: "Выдаем права"
+  postgresql_privs:
+    type: database
+    database: "{{ postgres_db_name }}"
+    roles: "{{ postgres_db_role }}"
+    privs: "{{ postgres_db_privs }}"
+
+- name: "Разрешаем md5 соединения для пользователя"
+  become_user: postgres
+  postgresql_pg_hba:
+    dest: "{{ postgres_config_dir }}/pg_hba.conf"
+    contype: host
+    address: 0.0.0.0/0
+    databases: "{{ postgres_db_name }}"
+    method: "{{ postgres_hba_method }}"
+    users: "{{ postgres_db_role }}"
+  notify: "Restart postgresl"
+
+- name: "Обновляем pg_hba.conf для реплики"
+  postgresql_pg_hba:
+    dest: "{{ postgres_config_dir }}/pg_hba.conf"
+    contype: host
+    databases: replication
+    source: "{{ postgres_replica_address }}/32"
+    method: "{{ postgres_replica_hba_method }}"
+    users: postgres
+
+- name: "Обновляем postgresql.conf для мастера"
+  blockinfile:
+    path: "{{ postgres_config_dir }}/postgresql.conf"
+    block: |
+      listen_addresses = 'localhost, {{ postgres_master_address }}'
+      wal_level = hot_standby
+      archive_mode = on
+      archive_command = 'cd .'
+      max_wal_senders = 8
+      hot_standby = on
+      port = 5432
+
+- name: "Обновляем пароль для дефолтного пользователя"
+  become_user: postgres
+  postgresql_user:
+    name: postgres
+    password: "{{ postgres_default_user_password }}"
+  notify: "Restart postgres"

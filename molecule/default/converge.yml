@@ -1,0 +1,18 @@
+---
+- name: Устанавливаем мастер PostgreSQL
+  become: true
+  tasks:
+    - name: Подключаем таски PostgreSQL для мастера
+      include_role:
+        name: ansible-role-postgres
+      vars:
+        postgres_role: master
+
+- name: Устанавливаем реплику
+  become: true
+  tasks:
+    - name: Подключаем таски PostgreSQL для реплики
+      include_role:
+        name: ansible-role-postgres
+      vars:
+        postgres_role: replica

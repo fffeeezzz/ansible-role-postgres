@@ -1,0 +1,9 @@
+---
+- name: "Установки зависимостей и настройка PostgreSQL"
+  ansible.builtin.include_tasks:
+    file: "setup.yml"
+
+- name: master
+  ansible.builtin.include_tasks:
+    file: "{{ postgres_role }}.yml"
+  when: postgres_role != 'unknown'
